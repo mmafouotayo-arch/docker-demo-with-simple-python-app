@@ -12,42 +12,30 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: 'main',
+                git branch: 'master',
                     url: 'https://github.com/mmafouotayo-arch/docker-demo-with-simple-python-app.git'
             }
         }
 
         stage('Build') {
             steps {
-                script {
-                    sh "docker build -t ${DOCKER_IMAGE} -t ${DOCKER_LATEST} ."
-                }
+                bat "docker build -t %DOCKER_IMAGE% -t %DOCKER_LATEST% ."
             }
         }
 
         stage('Code Quality') {
             steps {
-                script {
-                    sh """
-                        docker run --rm ${DOCKER_IMAGE} sh -c "
-                            pip install flake8 --quiet &&
-                            flake8 . --max-line-length=120 --exclude=.git,__pycache__ || true
-                        "
-                    """
-                }
+                bat """
+                    docker run --rm %DOCKER_IMAGE% sh -c "pip install flake8 --quiet && flake8 . --max-line-length=120 --exclude=.git,__pycache__ || true"
+                """
             }
         }
 
         stage('Tests') {
             steps {
-                script {
-                    sh """
-                        docker run --rm ${DOCKER_IMAGE} sh -c "
-                            pip install pytest --quiet &&
-                            pytest tests/ -v --tb=short || echo 'Aucun test trouve'
-                        "
-                    """
-                }
+                bat """
+                    docker run --rm %DOCKER_IMAGE% sh -c "pip install pytest --quiet && pytest tests/ -v --tb=short || echo Aucun test trouve"
+                """
             }
         }
 
@@ -58,18 +46,18 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    sh """
-                        echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
-                        docker push ${DOCKER_IMAGE}
-                        docker push ${DOCKER_LATEST}
+                    bat """
+                        echo %DOCKER_PASS%| docker login -u %DOCKER_USER% --password-stdin
+                        docker push %DOCKER_IMAGE%
+                        docker push %DOCKER_LATEST%
                     """
                 }
             }
         }
 
-        stage('Deploy - Render Staging') {
+        stage('Deploy - Staging') {
             steps {
-                echo "Deploiement sur Render Staging effectue via webhook"
+                echo 'Deploiement Staging effectue'
             }
         }
 
@@ -79,23 +67,22 @@ pipeline {
             }
         }
 
-        stage('Deploy - Render Production') {
+        stage('Deploy - Production') {
             steps {
-                echo "Deploiement sur Render Production effectue via webhook"
+                echo 'Deploiement Production effectue'
             }
         }
     }
 
     post {
         always {
-            sh "docker rmi ${DOCKER_IMAGE} || true"
-            echo "Nettoyage termine"
+            bat "docker rmi %DOCKER_IMAGE% || true"
         }
         success {
-            echo "Pipeline termine avec succes !"
+            echo 'Pipeline termine avec succes !'
         }
         failure {
-            echo "Echec du pipeline."
+            echo 'Echec du pipeline.'
         }
     }
 }
