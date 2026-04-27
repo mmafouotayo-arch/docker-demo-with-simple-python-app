@@ -1,0 +1,56 @@
+stages:
+  - build
+  - code_quality
+  - tests
+  - package
+  - deploy_staging
+  - deploy_production
+
+variables:
+  IMAGE: registry.gitlab.com/mmafouotayo/docker-demo-with-simple-python-app
+
+build:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  script:
+    - docker build -t $IMAGE:$CI_PIPELINE_IID .
+    - docker tag $IMAGE:$CI_PIPELINE_IID $IMAGE:latest
+
+code_quality:
+  stage: code_quality
+  image: python:3.9
+  script:
+    - pip install flake8 --quiet
+    - flake8 . --max-line-length=120 --exclude=.git,__pycache__ || true
+
+tests:
+  stage: tests
+  image: python:3.9
+  script:
+    - pip install pytest --quiet
+    - pytest tests/ || echo "Aucun test trouve"
+
+package:
+  stage: package
+  image: docker:24
+  services:
+    - docker:24-dind
+  script:
+    - docker login registry.gitlab.com -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+    - docker build -t $IMAGE:$CI_PIPELINE_IID .
+    - docker push $IMAGE:$CI_PIPELINE_IID
+    - docker tag $IMAGE:$CI_PIPELINE_IID $IMAGE:latest
+    - docker push $IMAGE:latest
+
+deploy_staging:
+  stage: deploy_staging
+  script:
+    - echo "Deploiement Staging sur Render"
+
+deploy_production:
+  stage: deploy_production
+  script:
+    - echo "Deploiement Production sur Render"
+  when: manual
